@@ -1,0 +1,1132 @@
+<!DOCTYPE html>  
+<html lang="ko">  
+<head>  
+  <meta charset="UTF-8">  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">  
+  <title>사내 풋살 이벤트 매니저</title>  
+  <style>  
+    /* CSS RESET & VARS */  
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-tap-highlight-color: transparent; }  
+    :root {  
+      --bg-color: #f4f6f8;  
+      --card-bg: #ffffff;  
+      --primary: #1b4d3e;  
+      --primary-light: #2c7a62;  
+      --accent: #e67e22;  
+      --text-main: #2c3e50;  
+      --text-sub: #7f8c8d;  
+      --border: #e2e8f0;  
+      --danger: #e74c3c;  
+      --success: #27ae60;  
+    }  
+    body { background-color: var(--bg-color); color: var(--text-main); padding-bottom: 70px; user-select: none; }  
+  
+    /* LAYOUT & VIEWS */  
+    .view { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }  
+    .view.active { display: block; }  
+  
+    /* NAVBAR */  
+    .bottom-nav {  
+      position: fixed; bottom: 0; left: 0; right: 0; height: 60px;  
+      background: #ffffff; border-top: 1px solid var(--border);  
+      display: flex; justify-content: space-around; align-items: center; z-index: 1000;  
+    }  
+    .nav-item {  
+      flex: 1; text-align: center; padding: 8px 0; color: var(--text-sub);  
+      font-size: 11px; border: none; background: none; cursor: pointer;  
+    }  
+    .nav-item.active { color: var(--primary); font-weight: bold; }  
+    .nav-item .icon { font-size: 18px; display: block; margin-bottom: 2px; }  
+  
+    /* UI COMPONENTS */  
+    .card { background: var(--card-bg); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }  
+    .card-title { font-size: 16px; font-weight: bold; color: var(--primary); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }  
+    .btn {  
+      display: inline-block; width: 100%; padding: 12px; border-radius: 8px; border: none;  
+      background: var(--primary); color: white; font-size: 15px; font-weight: bold;  
+      text-align: center; cursor: pointer; margin-top: 6px; margin-bottom: 6px;  
+    }  
+    .btn:active { opacity: 0.85; }  
+    .btn-secondary { background: #6c757d; }  
+    .btn-outline { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); }  
+    .btn-danger { background: var(--danger); }  
+    .btn-accent { background: var(--accent); }  
+    .btn-group { display: flex; gap: 8px; }  
+    .btn-group .btn { flex: 1; }  
+  
+    /* HEADER & STATS */  
+    .header-bar { background: var(--primary); color: white; padding: 16px; text-align: center; font-size: 18px; font-weight: bold; }  
+      
+    /* TABLES */  
+    .table-container { overflow-x: auto; margin-top: 8px; }  
+    table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }  
+    th, td { padding: 10px 4px; border-bottom: 1px solid var(--border); }  
+    th { background-color: #f8fafc; color: var(--text-sub); font-weight: 600; }  
+  
+    /* MATCH LIST ITEM */  
+    .match-item { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; background: #fff; }  
+    .match-item.completed { background: #f1f8f5; border-color: #a3e635; }  
+    .match-header { font-size: 12px; color: var(--text-sub); display: flex; justify-content: space-between; margin-bottom: 6px; }  
+    .match-teams { font-size: 16px; font-weight: bold; text-align: center; display: flex; justify-content: space-between; align-items: center; }  
+    .match-score { font-size: 18px; color: var(--primary); }  
+  
+    /* TIMER VIEW */  
+    .timer-display { text-align: center; padding: 20px 0; }  
+    .timer-time { font-size: 54px; font-weight: bold; font-family: monospace; color: var(--primary); margin: 10px 0; }  
+    .timer-status { font-size: 18px; font-weight: bold; color: var(--accent); }  
+  
+    /* SCORE VIEW */  
+    .score-board { display: flex; justify-content: space-between; align-items: center; text-align: center; margin: 15px 0; }  
+    .team-score-box { flex: 1; }  
+    .team-name { font-size: 18px; font-weight: bold; }  
+    .score-val { font-size: 42px; font-weight: bold; color: var(--primary); margin: 8px 0; }  
+    .score-btn { width: 44px; height: 44px; font-size: 20px; font-weight: bold; border-radius: 50%; border: 1px solid var(--border); background: #fff; cursor: pointer; }  
+    .player-scorer-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--border); }  
+  
+    /* FORM INPUTS */  
+    textarea, input, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; margin-top: 4px; margin-bottom: 12px; font-size: 14px; }  
+    label { font-size: 13px; font-weight: bold; color: var(--text-main); }  
+  
+    /* TOAST */  
+    #toast { position: fixed; bottom: 75px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; display: none; z-index: 2000; text-align: center; }  
+  
+    /* NOTICE BOX */  
+    .notice-box { background: #fffbe6; border: 1px solid #ffe58f; padding: 12px; border-radius: 8px; font-size: 12px; color: #d48806; margin-bottom: 12px; line-height: 1.4; }  
+  </style>  
+</head>  
+<body>  
+  
+  <div class="header-bar" id="eventTitleDisplay">사내 풋살 이벤트 매니저</div>  
+  
+  <!-- 1. HOME VIEW -->  
+  <div id="view-home" class="view active">  
+    <div class="card">  
+      <div class="card-title">  
+        <span>현재 / 진행 예정 경기</span>  
+        <button class="btn btn-outline" style="width: auto; padding: 4px 8px; font-size: 12px;" onclick="switchView('settings')">⚙️ 설정</button>  
+      </div>  
+      <div id="homeCurrentMatchInfo">진행할 경기가 없습니다.</div>  
+      <button class="btn" id="btnGoTimer">⏱️ 타이머로 이동</button>  
+      <button class="btn btn-accent" id="btnGoScore">⚽ 스코어 입력하기</button>  
+    </div>  
+  
+    <div class="card">  
+      <div class="card-title">  
+        <span>진행 현황</span>  
+        <span id="homeProgressText" style="font-size: 13px; color: var(--text-sub);">0/6 경기 완료</span>  
+      </div>  
+      <button class="btn btn-outline" onclick="switchView('rank')">🏆 전체 순위 보기</button>  
+    </div>  
+  
+    <div class="card">  
+      <div class="card-title">전체 경기 일정</div>  
+      <div id="homeMatchScheduleList"></div>  
+    </div>  
+  
+    <div class="notice-box">  
+      ⚠️ 경기 데이터는 현재 기기에만 저장되며 타 기기와 동기화되지 않습니다. 백업 또는 결과 공유 기능을 활용하세요.  
+    </div>  
+  </div>  
+  
+  <!-- 2. TIMER VIEW -->  
+  <div id="view-timer" class="view">  
+    <div class="card">  
+      <label>경기 선택</label>  
+      <select id="timerMatchSelect" onchange="onTimerMatchChange()"></select>  
+        
+      <div class="timer-display">  
+        <div id="timerRoundBadge" style="font-size: 13px; color: var(--text-sub);">1R</div>  
+        <div id="timerMatchVs" style="font-size: 20px; font-weight: bold; margin-top:4px;">A팀 VS B팀</div>  
+        <div id="timerStatus" class="timer-status">경기 대기</div>  
+        <div id="timerDisplay" class="timer-time">10:00</div>  
+        <div id="wakeLockStatus" style="font-size: 11px; color: var(--text-sub);">화면 꺼짐 방지: 미작동</div>  
+      </div>  
+  
+      <div class="btn-group">  
+        <button class="btn" id="btnTimerStart" onclick="startTimer()">시작</button>  
+        <button class="btn btn-secondary" id="btnTimerPause" onclick="pauseTimer()">일시정지</button>  
+      </div>  
+      <div class="btn-group">  
+        <button class="btn btn-outline" onclick="resumeTimer()">재시작</button>  
+        <button class="btn btn-outline" onclick="resetTimer()">초기화</button>  
+      </div>  
+      <button class="btn btn-accent" onclick="nextTimerPhase()">다음 단계 (휴식/다음경기)</button>  
+    </div>  
+  </div>  
+  
+  <!-- 3. SCORE VIEW -->  
+  <div id="view-score" class="view">  
+    <div class="card">  
+      <label>경기 선택</label>  
+      <select id="scoreMatchSelect" onchange="onScoreMatchChange()"></select>  
+        
+      <div class="score-board">  
+        <div class="team-score-box">  
+          <div class="team-name" id="scoreTeamAName">A팀</div>  
+          <div class="score-val" id="scoreTeamAVal">0</div>  
+          <div>  
+            <button class="score-btn" onclick="changeTeamScore('A', -1)">-</button>  
+            <button class="score-btn" onclick="changeTeamScore('A', 1)">+</button>  
+          </div>  
+        </div>  
+        <div style="font-size: 24px; font-weight: bold; color: var(--text-sub);">VS</div>  
+        <div class="team-score-box">  
+          <div class="team-name" id="scoreTeamBName">B팀</div>  
+          <div class="score-val" id="scoreTeamBVal">0</div>  
+          <div>  
+            <button class="score-btn" onclick="changeTeamScore('B', -1)">-</button>  
+            <button class="score-btn" onclick="changeTeamScore('B', 1)">+</button>  
+          </div>  
+        </div>  
+      </div>  
+    </div>  
+  
+    <div class="card">  
+      <div class="card-title">선수별 득점 상세 입력</div>  
+      <div id="scorerListContainer"></div>  
+    </div>  
+  
+    <button class="btn" onclick="saveMatchResult()">경기 결과 저장 및 완료</button>  
+    <button class="btn btn-danger" onclick="cancelMatchResult()">경기 완료 취소</button>  
+  </div>  
+  
+  <!-- 4. RANK VIEW -->  
+  <div id="view-rank" class="view">  
+    <div class="card">  
+      <div class="card-title">팀 순위</div>  
+      <div class="table-container">  
+        <table>  
+          <thead>  
+            <tr>  
+              <th>순위</th><th>팀</th><th>경기</th><th>승</th><th>무</th><th>패</th><th>득</th><th>실</th><th>차</th><th>승점</th>  
+            </tr>  
+          </thead>  
+          <tbody id="teamRankTableBody"></tbody>  
+        </table>  
+      </div>  
+    </div>  
+  
+    <div class="card">  
+      <div class="card-title">개인 득점 순위</div>  
+      <div class="table-container">  
+        <table>  
+          <thead>  
+            <tr>  
+              <th>순위</th><th>선수명</th><th>소속팀</th><th>득점</th>  
+            </tr>  
+          </thead>  
+          <tbody id="playerRankTableBody"></tbody>  
+        </table>  
+      </div>  
+    </div>  
+  
+    <button class="btn btn-accent" onclick="copyFullResults()">전체 결과 복사</button>  
+    <button class="btn btn-outline" id="btnWebShare" onclick="shareResults()" style="display:none;">결과 공유 (Web Share)</button>  
+  </div>  
+  
+  <!-- 5. TEAMS VIEW -->  
+  <div id="view-teams" class="view">  
+    <div id="teamsCardContainer"></div>  
+  </div>  
+  
+  <!-- 6. SETTINGS VIEW -->  
+  <div id="view-settings" class="view">  
+    <div class="card">  
+      <div class="card-title">대회 기본 설정</div>  
+      <label>이벤트명</label>  
+      <input type="text" id="settingEventTitle">  
+  
+      <label>A팀 명단 (한 줄에 한 명)</label>  
+      <textarea id="settingTeamA" rows="5"></textarea>  
+  
+      <label>B팀 명단 (한 줄에 한 명)</label>  
+      <textarea id="settingTeamB" rows="5"></textarea>  
+  
+      <label>C팀 명단 (한 줄에 한 명)</label>  
+      <textarea id="settingTeamC" rows="5" placeholder="C팀 명단을 입력하세요"></textarea>  
+        
+      <div style="font-size: 11px; color: var(--danger); margin-bottom: 8px;">  
+        ※ 선수 이름 수정 시 기존 득점 기록과 매칭되지 않을 수 있습니다.  
+      </div>  
+  
+      <button class="btn" onclick="saveSettings()">설정 저장</button>  
+    </div>  
+  
+    <div class="card">  
+      <div class="card-title">경기 일정 수정</div>  
+      <div id="settingMatchList"></div>  
+      <button class="btn" onclick="saveSettings()">일정 저장</button>  
+    </div>  
+  
+    <div class="card">  
+      <div class="card-title">데이터 관리</div>  
+      <button class="btn btn-outline" onclick="downloadBackup()">JSON 백업 다운로드</button>  
+      <label class="btn btn-outline" style="display:block; margin-top:6px;">  
+        JSON 백업 불러오기  
+        <input type="file" id="backupFileInput" accept=".json" style="display:none;" onchange="loadBackup(event)">  
+      </label>  
+      <button class="btn btn-secondary" onclick="loadSampleData()">샘플 데이터 로드</button>  
+      <button class="btn btn-danger" onclick="resetAllData()">전체 데이터 초기화</button>  
+    </div>  
+  </div>  
+  
+  <!-- BOTTOM NAVIGATION -->  
+  <nav class="bottom-nav">  
+    <button class="nav-item active" onclick="switchView('home')"><span class="icon">🏠</span>홈</button>  
+    <button class="nav-item" onclick="switchView('timer')"><span class="icon">⏱️</span>타이머</button>  
+    <button class="nav-item" onclick="switchView('score')"><span class="icon">⚽</span>스코어</button>  
+    <button class="nav-item" onclick="switchView('rank')"><span class="icon">🏆</span>순위</button>  
+    <button class="nav-item" onclick="switchView('teams')"><span class="icon">👥</span>팀 명단</button>  
+  </nav>  
+  
+  <div id="toast">메시지</div>  
+  
+  <script>  
+    /* INITIAL DEFAULT DATA */  
+    const DEFAULT_DATA = {  
+      eventTitle: "사내 풋살 이벤트 매니저",  
+      teams: {  
+        A: ["강호범P", "손성락P", "정윤환S", "권택민P", "박태훈P"],  
+        B: ["이승호P", "홍석범P", "김알찬P", "서원우P", "양진석S"],  
+        C: ["박주영L", "이준우P", "최윤승P", "김병환S", "문지훈S"]  
+      },  
+      matches: [  
+        { id: 1, round: "1R", teamA: "A", teamB: "B", time: 10, rest: 3, scheduled: "18:20~18:30", completed: false, scoreA: 0, scoreB: 0, scorers: {} },  
+        { id: 2, round: "1R", teamA: "B", teamB: "C", time: 10, rest: 3, scheduled: "18:33~18:43", completed: false, scoreA: 0, scoreB: 0, scorers: {} },  
+        { id: 3, round: "1R", teamA: "A", teamB: "C", time: 10, rest: 4, scheduled: "18:46~18:56", completed: false, scoreA: 0, scoreB: 0, scorers: {} },  
+        { id: 4, round: "2R", teamA: "A", teamB: "B", time: 13, rest: 5, scheduled: "19:03~19:16", completed: false, scoreA: 0, scoreB: 0, scorers: {} },  
+        { id: 5, round: "2R", teamA: "B", teamB: "C", time: 13, rest: 5, scheduled: "19:21~19:34", completed: false, scoreA: 0, scoreB: 0, scorers: {} },  
+        { id: 6, round: "2R", teamA: "A", teamB: "C", time: 13, rest: 0, scheduled: "19:39~19:52", completed: false, scoreA: 0, scoreB: 0, scorers: {} }  
+      ]  
+    };  
+  
+    let appData = JSON.parse(JSON.stringify(DEFAULT_DATA));  
+    let timerState = {  
+      matchId: 1,  
+      status: 'IDLE', // IDLE, MATCH_RUNNING, MATCH_PAUSED, REST_RUNNING, REST_PAUSED, FINISHED  
+      endTime: null,  
+      remainingSec: 600,  
+      isRest: false  
+    };  
+    let timerInterval = null;  
+    let wakeLock = null;  
+    let audioCtx = null;  
+  
+    /* UTILS & HELPERS */  
+    function escapeHtml(str) {  
+      if (!str) return '';  
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");  
+    }  
+  
+    function showToast(msg) {  
+      const t = document.getElementById('toast');  
+      t.innerText = msg;  
+      t.style.display = 'block';  
+      setTimeout(() => { t.style.display = 'none'; }, 2000);  
+    }  
+  
+    function saveData() {  
+      localStorage.setItem('futsal_app_data', JSON.stringify(appData));  
+    }  
+  
+    function saveTimerState() {  
+      localStorage.setItem('futsal_timer_state', JSON.stringify(timerState));  
+    }  
+  
+    function loadData() {  
+      const saved = localStorage.getItem('futsal_app_data');  
+      if (saved) {  
+        try {  
+          const parsed = JSON.parse(saved);  
+          // 만약 기존 저장 데이터의 C팀이 비어있다면 새로 설정된 기본 C팀 명단 적용  
+          if (!parsed.teams.C || parsed.teams.C.length === 0) {  
+            parsed.teams.C = DEFAULT_DATA.teams.C;  
+          }  
+          appData = parsed;  
+        } catch(e) {}  
+      }  
+      const savedTimer = localStorage.getItem('futsal_timer_state');  
+      if (savedTimer) {  
+        try { timerState = JSON.parse(savedTimer); } catch(e) {}  
+      }  
+    }  
+  
+    /* WEB AUDIO API SOUND GENERATOR */  
+    function initAudio() {  
+      if (!audioCtx) {  
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();  
+      }  
+      if (audioCtx.state === 'suspended') {  
+        audioCtx.resume();  
+      }  
+    }  
+  
+    function playBeepSound() {  
+      try {  
+        initAudio();  
+        let count = 0;  
+        const interval = setInterval(() => {  
+          const osc = audioCtx.createOscillator();  
+          const gain = audioCtx.createGain();  
+          osc.type = 'sine';  
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note  
+          gain.gain.setValueAtTime(0.3, audioCtx.currentTime);  
+          osc.connect(gain);  
+          gain.connect(audioCtx.destination);  
+          osc.start();  
+          osc.stop(audioCtx.currentTime + 0.2);  
+          count++;  
+          if (count >= 3) clearInterval(interval);  
+        }, 400);  
+      } catch (e) {  
+        console.log("Audio error:", e);  
+      }  
+    }  
+  
+    function triggerVibrate() {  
+      if ("vibrate" in navigator) {  
+        navigator.vibrate([300, 200, 300, 200, 300]);  
+      }  
+    }  
+  
+    /* WAKE LOCK API */  
+    async function requestWakeLock() {  
+      if ('wakeLock' in navigator) {  
+        try {  
+          wakeLock = await navigator.wakeLock.request('screen');  
+          document.getElementById('wakeLockStatus').innerText = "화면 꺼짐 방지: 활성화";  
+        } catch (err) {  
+          document.getElementById('wakeLockStatus').innerText = "화면 꺼짐 방지: 지원되지 않음";  
+        }  
+      } else {  
+        document.getElementById('wakeLockStatus').innerText = "화면 꺼짐 방지: 지원되지 않음";  
+      }  
+    }  
+  
+    function releaseWakeLock() {  
+      if (wakeLock) {  
+        wakeLock.release().then(() => { wakeLock = null; });  
+      }  
+      document.getElementById('wakeLockStatus').innerText = "화면 꺼짐 방지: 미작동";  
+    }  
+  
+    /* VIEW MANAGEMENT */  
+    function switchView(viewName) {  
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));  
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));  
+        
+      const targetView = document.getElementById(`view-${viewName}`);  
+      if (targetView) targetView.classList.add('active');  
+  
+      const navs = ['home', 'timer', 'score', 'rank', 'teams'];  
+      const idx = navs.indexOf(viewName);  
+      if (idx !== -1) {  
+        document.querySelectorAll('.nav-item')[idx].classList.add('active');  
+      }  
+  
+      renderAllViews();  
+    }  
+  
+    /* RENDER ALL VIEWS */  
+    function renderAllViews() {  
+      document.getElementById('eventTitleDisplay').innerText = appData.eventTitle;  
+      renderHome();  
+      renderTimerSelect();  
+      renderTimerDisplay();  
+      renderScoreSelect();  
+      renderRankings();  
+      renderTeams();  
+      renderSettings();  
+    }  
+  
+    /* 1. HOME VIEW RENDER */  
+    function renderHome() {  
+      const completedCount = appData.matches.filter(m => m.completed).length;  
+      document.getElementById('homeProgressText').innerText = `${completedCount}/${appData.matches.length} 경기 완료`;  
+  
+      const nextMatch = appData.matches.find(m => !m.completed) || appData.matches[appData.matches.length - 1];  
+        
+      let currentInfoHtml = "";  
+      if (nextMatch) {  
+        currentInfoHtml = `  
+          <div style="font-size:14px; color:var(--text-sub); margin-bottom:4px;">${nextMatch.id}경기 (${nextMatch.round}) - ${nextMatch.scheduled}</div>  
+          <div style="font-size:22px; font-weight:bold; color:var(--primary); margin-bottom:6px;">${nextMatch.teamA}팀 VS ${nextMatch.teamB}팀</div>  
+          <div style="font-size:13px;">경기시간: ${nextMatch.time}분 | 휴식: ${nextMatch.rest}분</div>  
+        `;  
+      } else {  
+        currentInfoHtml = `<div>모든 경기가 종료되었습니다!</div>`;  
+      }  
+      document.getElementById('homeCurrentMatchInfo').innerHTML = currentInfoHtml;  
+  
+      document.getElementById('btnGoTimer').onclick = () => {  
+        if(nextMatch) timerState.matchId = nextMatch.id;  
+        switchView('timer');  
+      };  
+      document.getElementById('btnGoScore').onclick = () => {  
+        if(nextMatch) {  
+          document.getElementById('scoreMatchSelect').value = nextMatch.id;  
+          onScoreMatchChange();  
+        }  
+        switchView('score');  
+      };  
+  
+      let scheduleHtml = "";  
+      appData.matches.forEach(m => {  
+        scheduleHtml += `  
+          <div class="match-item ${m.completed ? 'completed' : ''}">  
+            <div class="match-header">  
+              <span>${m.id}경기 (${m.round}) | ${m.scheduled}</span>  
+              <span>${m.completed ? '✅ 완료' : '예정'}</span>  
+            </div>  
+            <div class="match-teams">  
+              <span>${m.teamA}팀</span>  
+              <span class="match-score">${m.completed ? `${m.scoreA} :${m.scoreB}` : 'VS'}</span>  
+              <span>${m.teamB}팀</span>  
+            </div>  
+          </div>  
+        `;  
+      });  
+      document.getElementById('homeMatchScheduleList').innerHTML = scheduleHtml;  
+    }  
+  
+    /* 2. TIMER LOGIC & RENDER */  
+    function renderTimerSelect() {  
+      const sel = document.getElementById('timerMatchSelect');  
+      sel.innerHTML = appData.matches.map(m =>   
+        `<option value="${m.id}" ${m.id === timerState.matchId ? 'selected' : ''}>${m.id}경기 (${m.round}) : ${m.teamA} VS ${m.teamB}</option>`  
+      ).join('');  
+    }  
+  
+    function onTimerMatchChange() {  
+      const selId = parseInt(document.getElementById('timerMatchSelect').value);  
+      if (timerState.matchId !== selId) {  
+        timerState.matchId = selId;  
+        timerState.status = 'IDLE';  
+        timerState.isRest = false;  
+        const match = appData.matches.find(m => m.id === timerState.matchId);  
+        timerState.remainingSec = match ? match.time * 60 : 600;  
+        saveTimerState();  
+        renderTimerDisplay();  
+      }  
+    }  
+  
+    function renderTimerDisplay() {  
+      const match = appData.matches.find(m => m.id === timerState.matchId) || appData.matches[0];  
+      document.getElementById('timerRoundBadge').innerText = `${match.round} - 예정시간: ${match.scheduled}`;  
+      document.getElementById('timerMatchVs').innerText = `${match.teamA}팀 VS ${match.teamB}팀`;  
+  
+      let statusStr = "경기 대기";  
+      if (timerState.status === 'MATCH_RUNNING') statusStr = "⚽ 경기 진행 중";  
+      else if (timerState.status === 'MATCH_PAUSED') statusStr = "⏸️ 경기 일시정지";  
+      else if (timerState.status === 'REST_RUNNING') statusStr = "☕ 휴식시간 진행 중";  
+      else if (timerState.status === 'REST_PAUSED') statusStr = "⏸️ 휴식 일시정지";  
+      else if (timerState.status === 'FINISHED') statusStr = "🏁 모든 경기 종료";  
+  
+      document.getElementById('timerStatus').innerText = statusStr;  
+  
+      const m = Math.floor(timerState.remainingSec / 60).toString().padStart(2, '0');  
+      const s = (timerState.remainingSec % 60).toString().padStart(2, '0');  
+      document.getElementById('timerDisplay').innerText = `${m}:${s}`;  
+    }  
+  
+    function startTimer() {  
+      initAudio();  
+      requestWakeLock();  
+  
+      if (timerState.status === 'IDLE') {  
+        const match = appData.matches.find(m => m.id === timerState.matchId);  
+        timerState.remainingSec = match.time * 60;  
+        timerState.status = 'MATCH_RUNNING';  
+        timerState.isRest = false;  
+        timerState.endTime = Date.now() + timerState.remainingSec * 1000;  
+      } else if (timerState.status === 'MATCH_PAUSED') {  
+        timerState.status = 'MATCH_RUNNING';  
+        timerState.endTime = Date.now() + timerState.remainingSec * 1000;  
+      } else if (timerState.status === 'REST_PAUSED') {  
+        timerState.status = 'REST_RUNNING';  
+        timerState.endTime = Date.now() + timerState.remainingSec * 1000;  
+      }  
+  
+      saveTimerState();  
+      runTimerLoop();  
+    }  
+  
+    function pauseTimer() {  
+      if (timerState.status === 'MATCH_RUNNING') {  
+        timerState.status = 'MATCH_PAUSED';  
+      } else if (timerState.status === 'REST_RUNNING') {  
+        timerState.status = 'REST_PAUSED';  
+      }  
+      clearInterval(timerInterval);  
+      releaseWakeLock();  
+      saveTimerState();  
+      renderTimerDisplay();  
+    }  
+  
+    function resumeTimer() {  
+      startTimer();  
+    }  
+  
+    function resetTimer() {  
+      clearInterval(timerInterval);  
+      releaseWakeLock();  
+      const match = appData.matches.find(m => m.id === timerState.matchId);  
+      timerState.status = 'IDLE';  
+      timerState.isRest = false;  
+      timerState.remainingSec = match ? match.time * 60 : 600;  
+      saveTimerState();  
+      renderTimerDisplay();  
+    }  
+  
+    function runTimerLoop() {  
+      clearInterval(timerInterval);  
+      timerInterval = setInterval(() => {  
+        if (timerState.status === 'MATCH_RUNNING' || timerState.status === 'REST_RUNNING') {  
+          const now = Date.now();  
+          const diff = Math.max(0, Math.round((timerState.endTime - now) / 1000));  
+          timerState.remainingSec = diff;  
+  
+          if (diff <= 0) {  
+            handlePhaseEnd();  
+          } else {  
+            saveTimerState();  
+            renderTimerDisplay();  
+          }  
+        }  
+      }, 500);  
+    }  
+  
+    function handlePhaseEnd() {  
+      clearInterval(timerInterval);  
+      playBeepSound();  
+      triggerVibrate();  
+  
+      const match = appData.matches.find(m => m.id === timerState.matchId);  
+  
+      if (!timerState.isRest) {  
+        if (match.rest > 0) {  
+          showToast("경기 종료! 휴식시간 시작");  
+          timerState.isRest = true;  
+          timerState.status = 'REST_RUNNING';  
+          timerState.remainingSec = match.rest * 60;  
+          timerState.endTime = Date.now() + timerState.remainingSec * 1000;  
+          saveTimerState();  
+          runTimerLoop();  
+        } else {  
+          moveToNextMatch();  
+        }  
+      } else {  
+        showToast("휴식시간 종료!");  
+        moveToNextMatch();  
+      }  
+    }  
+  
+    function nextTimerPhase() {  
+      if (!timerState.isRest && timerState.status !== 'IDLE') {  
+        const match = appData.matches.find(m => m.id === timerState.matchId);  
+        if (match.rest > 0) {  
+          timerState.isRest = true;  
+          timerState.status = 'REST_RUNNING';  
+          timerState.remainingSec = match.rest * 60;  
+          timerState.endTime = Date.now() + timerState.remainingSec * 1000;  
+          saveTimerState();  
+          runTimerLoop();  
+          return;  
+        }  
+      }  
+      moveToNextMatch();  
+    }  
+  
+    function moveToNextMatch() {  
+      clearInterval(timerInterval);  
+      releaseWakeLock();  
+        
+      if (timerState.matchId < appData.matches.length) {  
+        timerState.matchId += 1;  
+        timerState.status = 'IDLE';  
+        timerState.isRest = false;  
+        const nextM = appData.matches.find(m => m.id === timerState.matchId);  
+        timerState.remainingSec = nextM.time * 60;  
+        showToast(`${nextM.id}경기로 이동합니다.`);  
+      } else {  
+        timerState.status = 'FINISHED';  
+        timerState.remainingSec = 0;  
+        showToast("모든 경기가 종료되었습니다.");  
+      }  
+      saveTimerState();  
+      renderTimerDisplay();  
+      renderTimerSelect();  
+    }  
+  
+    function restoreTimerOnLoad() {  
+      if (timerState.status === 'MATCH_RUNNING' || timerState.status === 'REST_RUNNING') {  
+        const now = Date.now();  
+        if (now < timerState.endTime) {  
+          timerState.remainingSec = Math.round((timerState.endTime - now) / 1000);  
+          runTimerLoop();  
+        } else {  
+          handlePhaseEnd();  
+        }  
+      } else {  
+        renderTimerDisplay();  
+      }  
+    }  
+  
+    /* 3. SCORE VIEW RENDER & LOGIC */  
+    let currentScoreData = { scoreA: 0, scoreB: 0, scorers: {} };  
+  
+    function renderScoreSelect() {  
+      const sel = document.getElementById('scoreMatchSelect');  
+      const curVal = sel.value || timerState.matchId;  
+      sel.innerHTML = appData.matches.map(m =>   
+        `<option value="${m.id}" ${m.id == curVal ? 'selected' : ''}>${m.id}경기 (${m.round}) : ${m.teamA} VS ${m.teamB} ${m.completed ? '✅' : ''}</option>`  
+      ).join('');  
+      onScoreMatchChange();  
+    }  
+  
+    function onScoreMatchChange() {  
+      const selId = parseInt(document.getElementById('scoreMatchSelect').value);  
+      const match = appData.matches.find(m => m.id === selId);  
+      if (!match) return;  
+  
+      currentScoreData = {  
+        scoreA: match.scoreA,  
+        scoreB: match.scoreB,  
+        scorers: JSON.parse(JSON.stringify(match.scorers || {}))  
+      };  
+  
+      document.getElementById('scoreTeamAName').innerText = `${match.teamA}팀`;  
+      document.getElementById('scoreTeamBName').innerText = `${match.teamB}팀`;  
+      document.getElementById('scoreTeamAVal').innerText = currentScoreData.scoreA;  
+      document.getElementById('scoreTeamBVal').innerText = currentScoreData.scoreB;  
+  
+      renderScorerInputs(match);  
+    }  
+  
+    function changeTeamScore(team, delta) {  
+      if (team === 'A') {  
+        currentScoreData.scoreA = Math.max(0, currentScoreData.scoreA + delta);  
+        document.getElementById('scoreTeamAVal').innerText = currentScoreData.scoreA;  
+      } else {  
+        currentScoreData.scoreB = Math.max(0, currentScoreData.scoreB + delta);  
+        document.getElementById('scoreTeamBVal').innerText = currentScoreData.scoreB;  
+      }  
+    }  
+  
+    function renderScorerInputs(match) {  
+      const container = document.getElementById('scorerListContainer');  
+      const playersA = appData.teams[match.teamA] || [];  
+      const playersB = appData.teams[match.teamB] || [];  
+  
+      if (playersA.length === 0 && playersB.length === 0) {  
+        container.innerHTML = `<div style="font-size:13px; color:var(--text-sub);">등록된 선수가 없습니다. 설정에서 선수를 추가해주세요.</div>`;  
+        return;  
+      }  
+  
+      let html = "";  
+      const buildGroup = (teamKey, pList) => {  
+        let gHtml = `<div style="font-weight:bold; color:var(--primary); margin-top:8px; margin-bottom:4px;">${teamKey}팀 선수</div>`;  
+        if (pList.length === 0) gHtml += `<div style="font-size:12px; color:var(--text-sub);">선수 없음 (설정에서 등록 필요)</div>`;  
+        pList.forEach(p => {  
+          const key = `${teamKey}_${p}`;  
+          const count = currentScoreData.scorers[key] || 0;  
+          gHtml += `  
+            <div class="player-scorer-row">  
+              <span>${escapeHtml(p)}</span>  
+              <div>  
+                <button class="score-btn" style="width:32px; height:32px; font-size:16px;" onclick="changePlayerGoal('${teamKey}', '${escapeHtml(p)}', -1)">-</button>  
+                <span style="font-weight:bold; width:24px; display:inline-block; text-align:center;">${count}</span>  
+                <button class="score-btn" style="width:32px; height:32px; font-size:16px;" onclick="changePlayerGoal('${teamKey}', '${escapeHtml(p)}', 1)">+</button>  
+              </div>  
+            </div>  
+          `;  
+        });  
+        return gHtml;  
+      };  
+  
+      html += buildGroup(match.teamA, playersA);  
+      html += buildGroup(match.teamB, playersB);  
+      container.innerHTML = html;  
+    }  
+  
+    function changePlayerGoal(teamKey, playerName, delta) {  
+      const key = `${teamKey}_${playerName}`;  
+      const current = currentScoreData.scorers[key] || 0;  
+      const next = Math.max(0, current + delta);  
+      currentScoreData.scorers[key] = next;  
+  
+      if (delta > 0) {  
+        if (teamKey === document.getElementById('scoreTeamAName').innerText.replace('팀','')) {  
+          changeTeamScore('A', 1);  
+        } else {  
+          changeTeamScore('B', 1);  
+        }  
+      }  
+  
+      const match = appData.matches.find(m => m.id === parseInt(document.getElementById('scoreMatchSelect').value));  
+      renderScorerInputs(match);  
+    }  
+  
+    function saveMatchResult() {  
+      const selId = parseInt(document.getElementById('scoreMatchSelect').value);  
+      const match = appData.matches.find(m => m.id === selId);  
+        
+      let sumA = 0, sumB = 0;  
+      Object.keys(currentScoreData.scorers).forEach(k => {  
+        if (k.startsWith(`${match.teamA}_`)) sumA += currentScoreData.scorers[k];  
+        if (k.startsWith(`${match.teamB}_`)) sumB += currentScoreData.scorers[k];  
+      });  
+  
+      match.scoreA = currentScoreData.scoreA;  
+      match.scoreB = currentScoreData.scoreB;  
+      match.scorers = currentScoreData.scorers;  
+      match.completed = true;  
+  
+      saveData();  
+      showToast("경기 결과가 저장되었습니다.");  
+      renderAllViews();  
+    }  
+  
+    function cancelMatchResult() {  
+      const selId = parseInt(document.getElementById('scoreMatchSelect').value);  
+      const match = appData.matches.find(m => m.id === selId);  
+      if (!match.completed) {  
+        showToast("이미 완료되지 않은 경기입니다.");  
+        return;  
+      }  
+      match.completed = false;  
+      saveData();  
+      showToast("경기 완료가 취소되었습니다.");  
+      renderAllViews();  
+    }  
+  
+    /* 4. RANKINGS LOGIC & RENDER */  
+    function renderRankings() {  
+      const stats = {  
+        A: { name: 'A', played: 0, win: 0, draw: 0, loss: 0, gf: 0, ga: 0, gd: 0, pts: 0 },  
+        B: { name: 'B', played: 0, win: 0, draw: 0, loss: 0, gf: 0, ga: 0, gd: 0, pts: 0 },  
+        C: { name: 'C', played: 0, win: 0, draw: 0, loss: 0, gf: 0, ga: 0, gd: 0, pts: 0 }  
+      };  
+  
+      appData.matches.filter(m => m.completed).forEach(m => {  
+        const tA = stats[m.teamA];  
+        const tB = stats[m.teamB];  
+  
+        if (tA && tB) {  
+          tA.played++; tB.played++;  
+          tA.gf += m.scoreA; tA.ga += m.scoreB;  
+          tB.gf += m.scoreB; tB.ga += m.scoreA;  
+  
+          if (m.scoreA > m.scoreB) {  
+            tA.win++; tA.pts += 3;  
+            tB.loss++;  
+          } else if (m.scoreA < m.scoreB) {  
+            tB.win++; tB.pts += 3;  
+            tA.loss++;  
+          } else {  
+            tA.draw++; tA.pts += 1;  
+            tB.draw++; tB.pts += 1;  
+          }  
+        }  
+      });  
+  
+      Object.keys(stats).forEach(k => {  
+        stats[k].gd = stats[k].gf - stats[k].ga;  
+      });  
+  
+      const sortedTeams = Object.values(stats).sort((a, b) => {  
+        if (b.pts !== a.pts) return b.pts - a.pts;  
+        if (b.gd !== a.gd) return b.gd - a.gd;  
+        if (b.gf !== a.gf) return b.gf - a.gf;  
+        return a.name.localeCompare(b.name);  
+      });  
+  
+      let teamTbody = "";  
+      sortedTeams.forEach((t, i) => {  
+        teamTbody += `  
+          <tr>  
+            <td><b>${i + 1}</b></td>  
+            <td><b>${t.name}팀</b></td>  
+            <td>${t.played}</td>  
+            <td>${t.win}</td>  
+            <td>${t.draw}</td>  
+            <td>${t.loss}</td>  
+            <td>${t.gf}</td>  
+            <td>${t.ga}</td>  
+            <td>${t.gd > 0 ? '+' + t.gd : t.gd}</td>  
+            <td><b>${t.pts}</b></td>  
+          </tr>  
+        `;  
+      });  
+      document.getElementById('teamRankTableBody').innerHTML = teamTbody;  
+  
+      const playerGoals = {};  
+      appData.matches.filter(m => m.completed).forEach(m => {  
+        if (m.scorers) {  
+          Object.keys(m.scorers).forEach(key => {  
+            const goals = m.scorers[key];  
+            if (goals > 0) {  
+              playerGoals[key] = (playerGoals[key] || 0) + goals;  
+            }  
+          });  
+        }  
+      });  
+  
+      const playerList = [];  
+      Object.keys(playerGoals).forEach(key => {  
+        const parts = key.split('_');  
+        const teamKey = parts[0];  
+        const playerName = parts.slice(1).join('_');  
+        playerList.push({  
+          name: playerName,  
+          team: teamKey,  
+          goals: playerGoals[key]  
+        });  
+      });  
+  
+      playerList.sort((a, b) => b.goals - a.goals || a.name.localeCompare(b.name));  
+  
+      let playerTbody = "";  
+      let currentRank = 1;  
+      for (let i = 0; i < playerList.length; i++) {  
+        if (i > 0 && playerList[i].goals < playerList[i - 1].goals) {  
+          currentRank = i + 1;  
+        }  
+        playerTbody += `  
+          <tr>  
+            <td>${currentRank}</td>  
+            <td>${escapeHtml(playerList[i].name)}</td>  
+            <td>${playerList[i].team}팀</td>  
+            <td><b>${playerList[i].goals}</b></td>  
+          </tr>  
+        `;  
+      }  
+  
+      if (playerList.length === 0) {  
+        playerTbody = `<tr><td colspan="4" style="color:var(--text-sub);">득점 기록이 없습니다.</td></tr>`;  
+      }  
+      document.getElementById('playerRankTableBody').innerHTML = playerTbody;  
+  
+      if (navigator.share) {  
+        document.getElementById('btnWebShare').style.display = 'block';  
+      }  
+    }  
+  
+    /* RESULT EXPORT & SHARE */  
+    function generateResultText() {  
+      let text = `🏆 [${appData.eventTitle}] 최종 결과 안내 🏆\n\n`;  
+        
+      text += `⚽ 경기별 결과:\n`;  
+      appData.matches.forEach(m => {  
+        if (m.completed) {  
+          text += `- ${m.id}경기(${m.round}): ${m.teamA}팀 ${m.scoreA} vs ${m.scoreB} ${m.teamB}팀\n`;  
+        } else {  
+          text += `- ${m.id}경기(${m.round}): 미진행\n`;  
+        }  
+      });  
+  
+      text += `\n📊 팀 순위:\n`;  
+      const rows = document.querySelectorAll('#teamRankTableBody tr');  
+      rows.forEach(r => {  
+        const cols = r.querySelectorAll('td');  
+        if (cols.length >= 10) {  
+          text += `${cols[0].innerText}위: ${cols[1].innerText} (${cols[9].innerText}점, 득실 ${cols[8].innerText})\n`;  
+        }  
+      });  
+  
+      text += `\n👟 개인 득점 순위:\n`;  
+      const pRows = document.querySelectorAll('#playerRankTableBody tr');  
+      pRows.forEach(r => {  
+        const cols = r.querySelectorAll('td');  
+        if (cols.length >= 4 && cols[0].innerText !== '-') {  
+          text += `${cols[0].innerText}위: ${cols[1].innerText}(${cols[2].innerText}) - ${cols[3].innerText}골\n`;  
+        }  
+      });  
+  
+      return text;  
+    }  
+  
+    function copyFullResults() {  
+      const text = generateResultText();  
+      if (document.execCommand) {  
+        const el = document.createElement('textarea');  
+        el.value = text;  
+        document.body.appendChild(el);  
+        el.select();  
+        document.execCommand('copy');  
+        document.body.removeChild(el);  
+        showToast("전체 결과가 클립보드에 복사되었습니다!");  
+      } else {  
+        showToast("복사 기능이 제한되어 있습니다.");  
+      }  
+    }  
+  
+    function shareResults() {  
+      const text = generateResultText();  
+      if (navigator.share) {  
+        navigator.share({  
+          title: appData.eventTitle,  
+          text: text  
+        }).catch(() => {});  
+      } else {  
+        copyFullResults();  
+      }  
+    }  
+  
+    /* 5. TEAMS VIEW RENDER */  
+    function renderTeams() {  
+      const container = document.getElementById('teamsCardContainer');  
+      let html = "";  
+  
+      const totalGoals = {};  
+      appData.matches.filter(m => m.completed).forEach(m => {  
+        if (m.scorers) {  
+          Object.keys(m.scorers).forEach(k => {  
+            totalGoals[k] = (totalGoals[k] || 0) + m.scorers[k];  
+          });  
+        }  
+      });  
+  
+      ['A', 'B', 'C'].forEach(tKey => {  
+        const pList = appData.teams[tKey] || [];  
+        html += `  
+          <div class="card">  
+            <div class="card-title">  
+              <span>${tKey}팀</span>  
+              <span style="font-size:13px; color:var(--text-sub);">${pList.length}명 등록</span>  
+            </div>  
+        `;  
+  
+        if (pList.length === 0) {  
+          html += `<div style="font-size:13px; color:var(--danger); padding:8px 0;">설정에서 ${tKey}팀 선수를 등록해 주세요.</div>`;  
+        } else {  
+          html += `<div style="display:flex; flex-wrap:wrap; gap:6px;">`;  
+          pList.forEach(p => {  
+            const goals = totalGoals[`${tKey}_${p}`] || 0;  
+            html += `  
+              <div style="background:#f1f5f9; padding:6px 10px; border-radius:16px; font-size:13px;">  
+                ${escapeHtml(p)} ${goals > 0 ? `<b style="color:var(--accent);">(${goals}골)</b>` : ''}  
+              </div>  
+            `;  
+          });  
+          html += `</div>`;  
+        }  
+        html += `</div>`;  
+      });  
+  
+      container.innerHTML = html;  
+    }  
+  
+    /* 6. SETTINGS VIEW LOGIC & RENDER */  
+    function renderSettings() {  
+      document.getElementById('settingEventTitle').value = appData.eventTitle;  
+      document.getElementById('settingTeamA').value = (appData.teams.A || []).join('\n');  
+      document.getElementById('settingTeamB').value = (appData.teams.B || []).join('\n');  
+      document.getElementById('settingTeamC').value = (appData.teams.C || []).join('\n');  
+  
+      let matchesHtml = "";  
+      appData.matches.forEach((m, idx) => {  
+        matchesHtml += `  
+          <div style="border:1px solid var(--border); padding:8px; border-radius:6px; margin-bottom:8px;">  
+            <div style="font-weight:bold; font-size:13px; margin-bottom:4px;">${m.id}경기 (${m.round})</div>  
+            <div style="display:flex; gap:4px;">  
+              <input type="text" id="m_teamA_${idx}" value="${m.teamA}" style="flex:1;" placeholder="팀A">  
+              <span style="line-height:35px;">VS</span>  
+              <input type="text" id="m_teamB_${idx}" value="${m.teamB}" style="flex:1;" placeholder="팀B">  
+            </div>  
+            <div style="display:flex; gap:4px; font-size:12px;">  
+              <div style="flex:1;">경기시간(분)<input type="number" id="m_time_${idx}" value="${m.time}"></div>  
+              <div style="flex:1;">휴식시간(분)<input type="number" id="m_rest_${idx}" value="${m.rest}"></div>  
+            </div>  
+            <div>예정시간<input type="text" id="m_sched_${idx}" value="${m.scheduled}"></div>  
+          </div>  
+        `;  
+      });  
+      document.getElementById('settingMatchList').innerHTML = matchesHtml;  
+    }  
+  
+    function saveSettings() {  
+      appData.eventTitle = document.getElementById('settingEventTitle').value || "사내 풋살 이벤트 매니저";  
+        
+      const parseTeam = (id) => document.getElementById(id).value.split('\n').map(s => s.trim()).filter(s => s.length > 0);  
+      appData.teams.A = parseTeam('settingTeamA');  
+      appData.teams.B = parseTeam('settingTeamB');  
+      appData.teams.C = parseTeam('settingTeamC');  
+  
+      appData.matches.forEach((m, idx) => {  
+        m.teamA = document.getElementById(`m_teamA_${idx}`).value;  
+        m.teamB = document.getElementById(`m_teamB_${idx}`).value;  
+        m.time = parseInt(document.getElementById(`m_time_${idx}`).value) || 10;  
+        m.rest = parseInt(document.getElementById(`m_rest_${idx}`).value) || 0;  
+        m.scheduled = document.getElementById(`m_sched_${idx}`).value;  
+      });  
+  
+      saveData();  
+      showToast("설정이 저장되었습니다.");  
+      renderAllViews();  
+    }  
+  
+    function downloadBackup() {  
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));  
+      const downloadAnchor = document.createElement('a');  
+      downloadAnchor.setAttribute("href", dataStr);  
+      downloadAnchor.setAttribute("download", `futsal_backup_${new Date().toISOString().slice(0,10)}.json`);  
+      document.body.appendChild(downloadAnchor);  
+      downloadAnchor.click();  
+      downloadAnchor.remove();  
+    }  
+  
+    function loadBackup(event) {  
+      const file = event.target.files[0];  
+      if (!file) return;  
+      const reader = new FileReader();  
+      reader.onload = function(e) {  
+        try {  
+          const parsed = JSON.parse(e.target.result);  
+          if (parsed.teams && parsed.matches) {  
+            appData = parsed;  
+            saveData();  
+            showToast("백업 데이터를 성공적으로 불러왔습니다.");  
+            renderAllViews();  
+          } else {  
+            showToast("잘못된 백업 파일 형식입니다.");  
+          }  
+        } catch (err) {  
+          showToast("파일을 읽는 중 오류가 발생했습니다.");  
+        }  
+      };  
+      reader.readAsText(file);  
+    }  
+  
+    function loadSampleData() {  
+      appData.teams.C = ["박주영L", "이준우P", "최윤승P", "김병환S", "문지훈S"];  
+      appData.matches[0].completed = true; appData.matches[0].scoreA = 3; appData.matches[0].scoreB = 1;  
+      appData.matches[0].scorers = { "A_강호범P": 2, "A_손성락P": 1, "B_이승호P": 1 };  
+      appData.matches[1].completed = true; appData.matches[1].scoreA = 2; appData.matches[1].scoreB = 2;  
+      appData.matches[1].scorers = { "B_홍석범P": 2, "C_박주영L": 1, "C_이준우P": 1 };  
+      saveData();  
+      showToast("샘플 데이터가 로드되었습니다.");  
+      renderAllViews();  
+    }  
+  
+    function resetAllData() {  
+      appData = JSON.parse(JSON.stringify(DEFAULT_DATA));  
+      timerState = { matchId: 1, status: 'IDLE', endTime: null, remainingSec: 600, isRest: false };  
+      saveData();  
+      saveTimerState();  
+      showToast("모든 데이터가 초기화되었습니다.");  
+      renderAllViews();  
+    }  
+  
+    /* INIT ON LOAD */  
+    window.onload = function() {  
+      loadData();  
+      restoreTimerOnLoad();  
+      renderAllViews();  
+  
+      document.body.addEventListener('touchstart', initAudio, { once: true });  
+      document.body.addEventListener('click', initAudio, { once: true });  
+    };  
+  </script>  
+</body>  
+</html>
